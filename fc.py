@@ -48,11 +48,15 @@ for key in vars().keys():
 if 'LWR_Fuel2Mod' in vars().keys():
     LWR_Params.radius = LWR_Params.pitch * math.sqrt(LWR_Fuel2Mod / math.pi)
 
+#Seperation Dictionaries
+sepeffLWR = ("92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0)
+sepeffFR  = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
+
 #Fuel Cycle Components
 LWR      = LightWaterReactor1G(reactor_parameters=lwr_defaults(),name= "LWR")
 FR       = FastReactor1G(reactor_parameters=FR_Params, name= "FR")
-LWR_Rep  = Reprocess.sepeff("LWR")
-FR_Rep   = Reprocess(MakeSep("FR"), "FR_Rep")
+LWR_Rep  = Reprocess(sepeffLWR)
+FR_Rep   = Reprocess(sepeffFR)
 LWR_Stor = Storage("LWR_Storage")
 FR_Stor  = Storage("FR_Storage")
 INT_Stor = Storage("INT_Storage")
