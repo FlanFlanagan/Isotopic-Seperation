@@ -36,7 +36,7 @@ def MakeSep(s):
 trackfile = tables.openFile("FR.h5", 'r')
 itrack = trackfile.root.ToIso_zz.read()
 trackfile.close()
-track_isos=set(itrack)
+bright_config.track_isos=set(itrack)
 
 #Converts storage times to seconds
 for key in vars().keys():
