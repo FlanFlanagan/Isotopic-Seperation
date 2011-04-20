@@ -9,7 +9,7 @@ import tables
 import metasci
 from fcparams import *
 from bright import *
-
+from mass_stream import *
 ##################
 ### Prep Work! ###
 ##################
@@ -49,17 +49,17 @@ if 'LWR_Fuel2Mod' in vars().keys():
     LWR_Params.radius = LWR_Params.pitch * math.sqrt(LWR_Fuel2Mod / math.pi)
 
 #Seperation Dictionaries
-sepeffLWR = ("92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0)
+sepeffLWR = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 sepeffFR  = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 
 #Fuel Cycle Components
 LWR      = LightWaterReactor1G(reactor_parameters=lwr_defaults(),name= "LWR")
 FR       = FastReactor1G(reactor_parameters=FR_Params, name= "FR")
-LWR_Rep  = Reprocess(sepeffLWR)
-FR_Rep   = Reprocess(sepeffFR)
-LWR_Stor = Storage("LWR_Storage")
-FR_Stor  = Storage("FR_Storage")
-INT_Stor = Storage("INT_Storage")
+LWR_Rep  = Reprocess(sepeff=sepeffLWR)
+FR_Rep   = Reprocess(sepeff=sepeffFR)
+LWR_Stor = Storage(name = "LWR_Storage")
+FR_Stor  = Storage(name = "FR_Storage")
+INT_Stor = Storage(name = "INT_Storage")
 
 
 #######################
@@ -68,9 +68,9 @@ INT_Stor = Storage("INT_Storage")
 
 def LWR_delR_BU_(ms):
     "Calculates the delta Reaction Rates at the target burnup."
-    LWR.IsosIn = ms
-    LWR.foldMassWeights()
-    dR = LWR.batchAve(LWR_Params.BUt, "p") - LWR.batchAve(LWR_Params.BUt, "d")
+    LWR.ms_feed = ms
+    LWR.fold_mass_weights()
+    dR = LWR.batch_average(LWR_Params.BUt, "p") - LWR.batch_average(LWR_Params.BUt,"d")
     return dR
 
 U235 = MassStream({922350: 1.0}, 0.04, "U235")
