@@ -36,7 +36,7 @@ def MakeSep(s):
 trackfile = tables.openFile("FR.h5", 'r')
 itrack = trackfile.root.ToIso_zz.read()
 trackfile.close()
-bright_config.track_isos=set(itrack)
+track_isos=set(itrack)
 
 #Converts storage times to seconds
 for key in vars().keys():
@@ -52,9 +52,10 @@ if 'LWR_Fuel2Mod' in vars().keys():
 sepeffLWR = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 sepeffFR  = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 
+
 #Fuel Cycle Components
-LWR      = LightWaterReactor1G(reactor_parameters=lwr_defaults(),name= "LWR")
-FR       = FastReactor1G(reactor_parameters=FR_Params, name= "FR")
+LWR      = LightWaterReactor1G(libfile="LWR.h5",reactor_parameters=lwr_defaults(),name= "LWR")
+FR       = FastReactor1G(libfile= "FR.h5", reactor_parameters=FR_Params, name= "FR")
 LWR_Rep  = Reprocess(sepeff=sepeffLWR)
 FR_Rep   = Reprocess(sepeff=sepeffFR)
 LWR_Stor = Storage(name = "LWR_Storage")
@@ -70,7 +71,7 @@ def LWR_delR_BU_(ms):
     "Calculates the delta Reaction Rates at the target burnup."
     LWR.ms_feed = ms
     LWR.fold_mass_weights()
-    dR = LWR.batch_average(LWR_Params.BUt, "p") - LWR.batch_average(LWR_Params.BUt,"d")
+    dR = LWR.batch_average(LWR_Params.BUt, "p") - LWR.batch_average(LWR_Params.BUt,"D")
     return dR
 
 U235 = MassStream({922350: 1.0}, 0.04, "U235")
@@ -82,11 +83,11 @@ delR_U238 = LWR_delR_BU_(U238)
 #Calculate delta R for the Guess
 LWR_CoreInput = U238 + U235
 LWR_CoreInput.name = "LWR_CoreInput"
-LWR_CoreInput.Normalize()
+LWR_CoreInput.normalize()
 LWR_delR_Guess = LWR_delR_BU_(LWR_CoreInput)
 
 
-k = LWR.batchAveK(LWR_Params.BUt)
+k = LWR.batch_average_k(LWR_Params.BUt)
 n = 0
 if not Quiet:
     print("{0}) {1}".format(1, k), end=" ") 
@@ -100,9 +101,9 @@ while 0.001 < abs(1.0 - k) and n < 10:
     #Recalculate core parameters for new masses guess
     LWR_CoreInput = U238 + U235
     LWR_CoreInput.name ="LWR_CoreInput"
-    LWR_CoreInput.Normalize()
+    LWR_CoreInput.normalize()
     LWR_delR_Guess = LWR_delR_BU_(LWR_CoreInput)
-    k = LWR.batchAveK(LWR_Params.BUt)
+    k = LWR.batch_average_k(LWR_Params.BUt)
     n = n+1
     if not Quiet:
         print(k, end=" ") 
@@ -110,22 +111,22 @@ if not Quiet:
     print()
     print()
 
-#Calculate and write output
-LWR.BUd_BisectionMethod()
-LWR.calcOutIso()
-LWR.writeout()
 
-LWR_SNF = 1.0 * LWR.IsosOut
+#Calculate and write output
+LWR.BUd_bisection_method()
+LWR.calc_ms_prod()
+LWR.write_ms_pass()
+LWR_SNF = 1.0 * LWR.ms_prod
 LWR_SNF.name = "LWR_SNF"
 
-LWR_Cooled = LWR_Stor.doCalc(LWR_SNF, LWR_SNF_Storage_Time)
+LWR_Cooled = LWR_Stor.calc(LWR_SNF, LWR_SNF_Storage_Time)
 LWR_Cooled.name = "LWR_Cooled"
 
-LWR_RepOut = LWR_Rep.doCalc(LWR_Cooled)
+LWR_RepOut = LWR_Rep.calc(LWR_Cooled)
 LWR_RepOut.name = "LWR_Reprocessing_Product"
 
-LWR_Rep.writeout()
-LWR_Stor.writeout()
+LWR_Rep.write_ms_pass()
+LWR_Stor.write_ms_pass()
 
 ######################
 ### FR Computation ###
@@ -144,8 +145,8 @@ TRUTopUp.mass = 0.5
 def FR_delR_BU_(ms):
     "Calculates the delta Reaction Rates at the target burnup."
     FR.IsosIn = ms
-    FR.foldMassWeights()
-    dR = FR.batchAve(FR_Params.BUt, "p") - FR.batchAve(FR_Params.BUt, "d")
+    FR.fold_mass_weights()
+    dR = FR.batch_average(FR_Params.BUt, "p") - FR.batch_average(FR_Params.BUt, "D")
     return dR
 
 def FR_Mass_Ratio_Calc():
@@ -161,9 +162,9 @@ def FR_Mass_Ratio_Calc():
     TRUTopUp.mass = TopUpMassSpace * 0.0
     CoreInput = UTopUp + TRUTopUp + FR_RepUout + FR_RepTRUout + FR_RepLANout
     CoreInput.name = "CoreInput"
-    CoreInput.Normalize()
+    CoreInput.normalize()
     delR_Guess = FR_delR_BU_(CoreInput)
-    k_AllU = FR.batchAveK(FR_Params.BUt)
+    k_AllU = FR.batch_average_k(FR_Params.BUt)
     sign_U = (1.0 - k_AllU) / abs(1.0 - k_AllU)
 
     #Find bound for All TRU
@@ -171,9 +172,9 @@ def FR_Mass_Ratio_Calc():
     TRUTopUp.mass = TopUpMassSpace * 1.0
     CoreInput = UTopUp + TRUTopUp + FR_RepUout + FR_RepTRUout + FR_RepLANout
     CoreInput.name = "CoreInput"
-    CoreInput.Normalize()
+    CoreInput.normalize()
     delR_Guess = FR_delR_BU_(CoreInput)
-    k_AllTRU = FR.batchAveK(FR_Params.BUt)
+    k_AllTRU = FR.batch_average_d(FR_Params.BUt)
     sign_TRU = (1.0 - k_AllTRU) / abs(1.0 - k_AllTRU)
 
 
@@ -187,10 +188,10 @@ def FR_Mass_Ratio_Calc():
         #Calculate delta R for the Guess
         CoreInput = UTopUp + TRUTopUp + FR_RepUout + FR_RepTRUout + FR_RepLANout
         CoreInput.name = "CoreInput"
-        CoreInput.Normalize()
+        CoreInput.normalize()
         delR_Guess = FR_delR_BU_(CoreInput)
 
-        k = FR.batchAveK(FR_Params.BUt)
+        k = FR.batch_average_k(FR_Params.BUt)
         n = 0
         if not Quiet:
             print("{0}) {1}".format(cyc+1, k), end=" ") 
@@ -204,9 +205,9 @@ def FR_Mass_Ratio_Calc():
             #Recalculate core parameters for new masses guess
             CoreInput = UTopUp + TRUTopUp + FR_RepUout + FR_RepTRUout + FR_RepLANout
             CoreInput.name = "CoreInput"
-            CoreInput.Normalize()
+            CoreInput.normalize()
             delR_Guess = FR_delR_BU_(CoreInput)
-            k = FR.batchAveK(FR_Params.BUt)
+            k = FR.batch_average_k(FR_Params.BUt)
             n = n+1
             if not Quiet:
                 print(k, end=" ") 
@@ -336,11 +337,11 @@ for cyc in range(10):
     #Calculate the LWR SNF Top up needed
     snf_need.append( TRUTopUp.mass / TRU_per_kgLWR_FF )
 
-    StorOut = FR_Stor.doCalc(FR.IsosOut, FR_SNF_Storage_Time)
+    StorOut = FR_Stor.calc(FR.IsosOut, FR_SNF_Storage_Time)
     StorOut.name = "StorOut"
     FR_Stor.writeout()
 
-    FR_RepOut = FR_Rep.doCalc(StorOut)
+    FR_RepOut = FR_Rep.calc(StorOut)
     FR_RepOut.name = "RepOut"
     FR_Rep.writeout()
 
@@ -426,13 +427,13 @@ FR_HLW = FR_SNF_oFP + FR_SNF_LAN + \
 
 #Finally
 HLW = FR_HLW + LWR_HLW
-HLW.Normalize()
+HLW.normalize()
 
 ######################################
 ### Do Interim storage calculation ###
 ######################################
-HLW_Cooled = INT_Stor.doCalc(HLW, INT_SNF_Storage_Time)
-INT_Stor.setParams()
+HLW_Cooled = INT_Stor.calc(HLW, INT_SNF_Storage_Time)
+INT_Stor.set_Params()
 INT_Stor.writeout()
 
 HLW_stream = HLW_Cooled.multByMass()
