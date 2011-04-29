@@ -14,6 +14,10 @@ from mass_stream import *
 ### Prep Work! ###
 ##################
 
+bright_config.write_hdf5 = True
+bright_config.write_text = False
+
+
 #Various Variables
 snf_need = []
 if not Quiet:
@@ -32,11 +36,11 @@ def MakeSep(s):
             seps[g[prelen:]] = globals()[g]
     return seps
 
-#redefine isotrak
+#redefine iUsotrak
 trackfile = tables.openFile("FR.h5", 'r')
 itrack = trackfile.root.ToIso_zz.read()
 trackfile.close()
-track_isos=set(itrack)
+bright_config.track_isos = set([int(i) for i in itrack])
 
 #Converts storage times to seconds
 for key in vars().keys():
@@ -115,7 +119,7 @@ if not Quiet:
 #Calculate and write output
 LWR.BUd_bisection_method()
 LWR.calc_ms_prod()
-LWR.write_ms_pass()
+LWR.write()
 LWR_SNF = 1.0 * LWR.ms_prod
 LWR_SNF.name = "LWR_SNF"
 
@@ -125,8 +129,8 @@ LWR_Cooled.name = "LWR_Cooled"
 LWR_RepOut = LWR_Rep.calc(LWR_Cooled)
 LWR_RepOut.name = "LWR_Reprocessing_Product"
 
-LWR_Rep.write_ms_pass()
-LWR_Stor.write_ms_pass()
+#LWR_Rep.write_ms_pass()
+#LWR_Stor.write_ms_pass()
 
 ######################
 ### FR Computation ###
@@ -134,7 +138,7 @@ LWR_Stor.write_ms_pass()
 
 #Mass Streams
 UTopUp       = MassStream("U-TopUp.txt", 0.50, "UTopUp")
-TRUTopUp     = LWR_RepOut.getTRU("TRUTopUp")
+TRUTopUp     = LWR_RepOut.get_tru("TRUTopUp")
 FR_RepUout   = MassStream({922350: 1.0}, 0.0, "RepUout")
 FR_RepTRUout = MassStream({942380: 1.0}, 0.0, "RepTRUout")
 FR_RepLANout = MassStream({591440: 1.0}, 0.0, "RepLANout")
@@ -144,7 +148,7 @@ TRUTopUp.mass = 0.5
 
 def FR_delR_BU_(ms):
     "Calculates the delta Reaction Rates at the target burnup."
-    FR.IsosIn = ms
+    FR.ms_feed = ms
     FR.fold_mass_weights()
     dR = FR.batch_average(FR_Params.BUt, "p") - FR.batch_average(FR_Params.BUt, "D")
     return dR
@@ -174,7 +178,7 @@ def FR_Mass_Ratio_Calc():
     CoreInput.name = "CoreInput"
     CoreInput.normalize()
     delR_Guess = FR_delR_BU_(CoreInput)
-    k_AllTRU = FR.batch_average_d(FR_Params.BUt)
+    k_AllTRU = FR.batch_average_k(FR_Params.BUt)
     sign_TRU = (1.0 - k_AllTRU) / abs(1.0 - k_AllTRU)
 
 
@@ -216,12 +220,13 @@ def FR_Mass_Ratio_Calc():
             print()
 
     #Calculate and write output
-    FR.BUd_BisectionMethod()
-    FR.calcOutIso()
+    FR.BUd_bisection_method()
+    FR.calc_ms_prod()
     FR.calcSubStreams()
-    FR.calcTruCR()
+    FR.calc_tru_cr()
 
     return
+
 
 def FR_Calibrate_PNL_2_TRUCR():
 #   delta = 0.1
@@ -236,13 +241,15 @@ def FR_Calibrate_PNL_2_TRUCR():
         try: 
             FR.P_NL = pnl_a
             FR_Mass_Ratio_Calc()
-            trucr_a = FR.TruCR
+            trucr_a = FR.tru_cr
             sign_a = (trucr_a - FR_TRU_CR) / abs(trucr_a - FR_TRU_CR)
             FoundA = True
         except RuntimeError as e:
             if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
                 raise e
             pnl_a = pnl_a + delta
+
+    print("Yay!")
 
     #Determine Upper Bound
 #	pnl_b  = 1.2
@@ -252,13 +259,15 @@ def FR_Calibrate_PNL_2_TRUCR():
         try: 
             FR.P_NL = pnl_b
             FR_Mass_Ratio_Calc()
-            trucr_b = FR.TruCR
+            trucr_b = FR.tru_cr
             sign_b = (trucr_b - FR_TRU_CR) / abs(trucr_b - FR_TRU_CR)
             FoundB = True
         except RuntimeError as e:
             if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
                 raise e
             pnl_b = pnl_b - delta
+
+    print("Yay!")
 
     DoA = 10.0**(-5)        #Degree of accuracy to carry out calculations to.
     q = 0
@@ -281,7 +290,7 @@ def FR_Calibrate_PNL_2_TRUCR():
                 pnl_b = pnl_b - 0.1*pnl_b
                 n = n + 1
 
-        trucr_c = FR.TruCR
+        trucr_c = FR.tru_cr
         sign_c = (trucr_c - FR_TRU_CR) / abs(trucr_c - FR_TRU_CR)
 
         q = q + 1
@@ -332,7 +341,7 @@ for cyc in range(10):
                     FR.P_NL = FR.P_NL + delta
                 elif 1.0  <= pnl_regime:
                     FR.P_NL = FR.P_NL - delta
-    FR.writeout()
+    FR.write()
 
     #Calculate the LWR SNF Top up needed
     snf_need.append( TRUTopUp.mass / TRU_per_kgLWR_FF )
@@ -343,11 +352,11 @@ for cyc in range(10):
 
     FR_RepOut = FR_Rep.calc(StorOut)
     FR_RepOut.name = "RepOut"
-    FR_Rep.writeout()
+    FR_Rep.write()
 
-    FR_RepUout   = FR_RepOut.getU(FR_RepUout.name)
-    FR_RepTRUout = FR_RepOut.getTRU(FR_RepTRUout.name)
-    FR_RepLANout = FR_RepOut.getLAN(FR_RepLANout.name)
+    FR_RepUout   = FR_RepOut.get_u(FR_RepUout.name)
+    FR_RepTRUout = FR_RepOut.get_tru(FR_RepTRUout.name)
+    FR_RepLANout = FR_RepOut.get_lan(FR_RepLANout.name)
     if FR_LAN_FF_Cap < FR_RepLANout.mass:
         FR_RepLANout.mass = FR_LAN_FF_Cap
 
@@ -374,15 +383,15 @@ for i in FP:
         other_FP.append(i)
 
 #Fist get LWR HLW
-LWR_SNF_U   = LWR_Stor.IsosOut.getU()
-LWR_SNF_NP  = LWR_Stor.IsosOut.getSubStreamStr(["NP"])
-LWR_SNF_PU  = LWR_Stor.IsosOut.getPU()
-LWR_SNF_AM  = LWR_Stor.IsosOut.getSubStreamStr(["AM"])
-LWR_SNF_CM  = LWR_Stor.IsosOut.getSubStreamStr(["CM"])
-LWR_SNF_CS  = LWR_Stor.IsosOut.getSubStreamStr(["CS"])
-LWR_SNF_SR  = LWR_Stor.IsosOut.getSubStreamStr(["SR"])
-LWR_SNF_LAN = LWR_Stor.IsosOut.getLAN()
-LWR_SNF_oFP = LWR_Stor.IsosOut.getSubStreamStr(other_FP)
+LWR_SNF_U   = LWR_Stor.ms_prod.get_u()
+LWR_SNF_NP  = LWR_Stor.ms_prod.get_sub_stream(["NP"])
+LWR_SNF_PU  = LWR_Stor.ms_prod.get_pu()
+LWR_SNF_AM  = LWR_Stor.ms_prod.get_sub_stream(["AM"])
+LWR_SNF_CM  = LWR_Stor.ms_prod.get_sub_stream(["CM"])
+LWR_SNF_CS  = LWR_Stor.ms_prod.get_sub_stream(["CS"])
+LWR_SNF_SR  = LWR_Stor.ms_prod.get_sub_stream(["SR"])
+LWR_SNF_LAN = LWR_Stor.ms_prod.get_lan()
+LWR_SNF_oFP = LWR_Stor.ms_prod.get_sub_stream(other_FP)
 
 LWR_SNF_oFP = LWR_SNF_oFP + MassStream({10010: 1.0 - LWR_SNF_U.mass - \
     LWR_SNF_NP.mass - LWR_SNF_PU.mass - LWR_SNF_AM.mass - LWR_SNF_CM.mass - \
@@ -402,15 +411,15 @@ LWR_HLW = LWR_HLW * snf_need[-1]
 
 
 #Then get FR HLW
-FR_SNF_U   = FR_Stor.IsosOut.getU()
-FR_SNF_NP  = FR_Stor.IsosOut.getSubStreamStr(["NP"])
-FR_SNF_PU  = FR_Stor.IsosOut.getPU()
-FR_SNF_AM  = FR_Stor.IsosOut.getSubStreamStr(["AM"])
-FR_SNF_CM  = FR_Stor.IsosOut.getSubStreamStr(["CM"])
-FR_SNF_CS  = FR_Stor.IsosOut.getSubStreamStr(["CS"])
-FR_SNF_SR  = FR_Stor.IsosOut.getSubStreamStr(["SR"])
-FR_SNF_LAN = FR_Stor.IsosOut.getLAN()
-FR_SNF_oFP = FR_Stor.IsosOut.getSubStreamStr(other_FP)
+FR_SNF_U   = FR_Stor.ms_prod.get_u()
+FR_SNF_NP  = FR_Stor.ms_prod.get_sub_stream(["NP"])
+FR_SNF_PU  = FR_Stor.ms_prod.get_pu()
+FR_SNF_AM  = FR_Stor.ms_prod.get_sub_stream(["AM"])
+FR_SNF_CM  = FR_Stor.ms_prod.get_sub_stream(["CM"])
+FR_SNF_CS  = FR_Stor.ms_prod.get_sub_stream(["CS"])
+FR_SNF_SR  = FR_Stor.ms_prod.get_sub_stream(["SR"])
+FR_SNF_LAN = FR_Stor.ms_prod.get_lan()
+FR_SNF_oFP = FR_Stor.ms_prod.get_sub_stream(other_FP)
 
 FR_SNF_oFP = FR_SNF_oFP + MassStream({10010: 1.0 - FR_SNF_U.mass - \
     FR_SNF_NP.mass - FR_SNF_PU.mass - FR_SNF_AM.mass - FR_SNF_CM.mass - \
@@ -433,10 +442,10 @@ HLW.normalize()
 ### Do Interim storage calculation ###
 ######################################
 HLW_Cooled = INT_Stor.calc(HLW, INT_SNF_Storage_Time)
-INT_Stor.set_Params()
-INT_Stor.writeout()
+INT_Stor.calc_params()
+INT_Stor.write()
 
-HLW_stream = HLW_Cooled.multByMass()
+HLW_stream = HLW_Cooled.mult_by_mass()
 with open('HLW_CooledIsos.txt', 'w') as f:
     for iso in HLW_stream.keys():
         f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), HLW_stream[iso]))
