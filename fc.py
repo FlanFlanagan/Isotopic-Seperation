@@ -10,6 +10,7 @@ import metasci
 from fcparams import *
 from bright import *
 from mass_stream import *
+from isoname import *
 ##################
 ### Prep Work! ###
 ##################
@@ -245,7 +246,7 @@ def FR_Calibrate_PNL_2_TRUCR():
             sign_a = (trucr_a - FR_TRU_CR) / abs(trucr_a - FR_TRU_CR)
             FoundA = True
         except RuntimeError as e:
-            if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
+            if ("BadFuelForm" not in str(e)) and ("FUEL COMPOSITION NOT COMPUTABLE!" not in str(e)): 
                 raise e
             pnl_a = pnl_a + delta
 
@@ -263,7 +264,7 @@ def FR_Calibrate_PNL_2_TRUCR():
             sign_b = (trucr_b - FR_TRU_CR) / abs(trucr_b - FR_TRU_CR)
             FoundB = True
         except RuntimeError as e:
-            if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
+            if ("BadFuelForm" not in str(e)) and ("FUEL COMPOSITION NOT COMPUTABLE!" not in str(e)): 
                 raise e
             pnl_b = pnl_b - delta
 
@@ -284,7 +285,7 @@ def FR_Calibrate_PNL_2_TRUCR():
                 FR_Mass_Ratio_Calc()
                 GoodBoundary = True
             except RuntimeError as e:
-                if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
+                if ("BadFuelForm" not in str(e)) and ("FUEL COMPOSITION NOT COMPUTABLE!" not in str(e)): 
                     raise e
                 pnl_a = pnl_a + 0.1*pnl_a
                 pnl_b = pnl_b - 0.1*pnl_b
@@ -333,7 +334,7 @@ for cyc in range(10):
                 FR_Mass_Ratio_Calc()
                 BadKRange = False
             except RuntimeError as e:
-                if ("BadFuelForm" not in str(e)) and ("BisectionMethodNotPerformed" not in str(e)):
+                if "FUEL COMPOSITION NOT COMPUTABLE!" not in str(e): 
                     raise e
 
                 pnl_regime = float(str(e).split()[-1][:-1])
@@ -346,9 +347,9 @@ for cyc in range(10):
     #Calculate the LWR SNF Top up needed
     snf_need.append( TRUTopUp.mass / TRU_per_kgLWR_FF )
 
-    StorOut = FR_Stor.calc(FR.IsosOut, FR_SNF_Storage_Time)
+    StorOut = FR_Stor.calc(FR.ms_prod, FR_SNF_Storage_Time)
     StorOut.name = "StorOut"
-    FR_Stor.writeout()
+    FR_Stor.write()
 
     FR_RepOut = FR_Rep.calc(StorOut)
     FR_RepOut.name = "RepOut"
