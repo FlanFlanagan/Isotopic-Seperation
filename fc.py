@@ -51,7 +51,7 @@ for key in vars().keys():
 
 #Calculates LWR Pin Size based on Fuel-to-Moderator Ratio
 if 'LWR_Fuel2Mod' in vars().keys():
-    LWR_Params.radius = LWR_Params.pitch * math.sqrt(LWR_Fuel2Mod / math.pi)
+    LWR_Params.fuel_radius = LWR_Params.unit_cell_pitch * math.sqrt(LWR_Fuel2Mod / math.pi)
 
 #Seperation Dictionaries
 sepeffLWR = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
@@ -132,6 +132,11 @@ LWR_RepOut.name = "LWR_Reprocessing_Product"
 
 #LWR_Rep.write_ms_pass()
 #LWR_Stor.write_ms_pass()
+
+LWR_stream = LWR_Cooled.mult_by_mass()
+with open('LWR_CooledIsos.txt', 'w') as f:
+    for iso in LWR_stream.keys():
+        f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), LWR_stream[iso]))
 
 ######################
 ### FR Computation ###
@@ -368,6 +373,11 @@ for el in snf_need:
     params.write( "%.6E\t%.6E\t"%(el, 0.0) )
 params.write("\n")
 params.close()
+
+FR_stream = StorOut.mult_by_mass()
+with open('FR_CooledIsos.txt', 'w') as f:
+    for iso in FR_stream.keys():
+        f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), FR_stream[iso]))
 
 
 #################################
