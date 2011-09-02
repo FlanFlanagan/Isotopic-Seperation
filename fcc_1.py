@@ -11,7 +11,7 @@ from fcparams import *
 from bright import *
 from mass_stream import *
 from isoname import *
-
+from pyne.data import *
 ##################
 ### Prep Work! ###
 ##################
@@ -126,16 +126,26 @@ LWR_SNF.name = "LWR_SNF"
 LWR_Cooled = LWR_Stor.calc(LWR_SNF, LWR_SNF_Storage_Time)
 LWR_Cooled.name = "LWR_Cooled"
 
+
+
+LWR_stream = LWR_Cooled.mult_by_mass()
+with open('LWR_CooledIsos.txt', 'w') as f:
+    for iso in LWR_stream.keys():
+	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), LWR_stream[iso]))
+	
+	
+RmvIsos = [RmIsos]
+RmStor = MassStream({RmIsos: LWR_Cooled.comp[RmIsos]})
+stor_t = 8 * half_life(RmIsos)
+Rm_Stor = LWR_Stor.calc(RmStor, stor_t)
+LWR_Cooled = remove(LWR_Cooled, RmvIsos)
+
 LWR_RepOut = LWR_Rep.calc(LWR_Cooled)
 LWR_RepOut.name = "LWR_Reprocessing_Product"
 
 #LWR_Rep.write_ms_pass()
 #LWR_Stor.write_ms_pass()
 
-LWR_stream = LWR_Cooled.mult_by_mass()
-with open('LWR_CooledIsos.txt', 'w') as f:
-    for iso in LWR_stream.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), LWR_stream[iso]))
 
 ######################
 ### FR Computation ###
@@ -444,7 +454,7 @@ FR_HLW = FR_SNF_oFP + FR_SNF_LAN + \
     ((1.0 - FR_SE_SR) * FR_SNF_SR)
 
 #Finally
-HLW = FR_HLW + LWR_HLW
+HLW = FR_HLW + LWR_HLW + Rm_Stor
 HLW.normalize()
 
 ######################################
