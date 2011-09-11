@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import time
 import math
-
+from rmIsos import *
 import tables
 from AddFuncts import *
 import metasci
@@ -136,7 +136,7 @@ with open('LWR_CooledIsos.txt', 'w') as f:
 	
 RmvIsos = [RmIsos]
 RmStor = MassStream({RmIsos: LWR_Cooled.comp[RmIsos]})
-stor_t = 8 * half_life(RmIsos)
+stor_t = 0 * half_life(RmIsos)
 Rm_Stor = LWR_Stor.calc(RmStor, stor_t)
 LWR_Cooled = remove(LWR_Cooled, RmvIsos)
 
@@ -469,3 +469,9 @@ with open('HLW_CooledIsos.txt', 'w') as f:
     for iso in HLW_stream.keys():
 	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), HLW_stream[iso]))
        
+writer2 = open('BUd.py','a')
+n = LWR.BUd
+m = FR.BUd
+writer2.write('LWR_BUd =' + str(n)+'\n')
+writer2.write('FR_BUd =' + str(m))
+writer2.close
