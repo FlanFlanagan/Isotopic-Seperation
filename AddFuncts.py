@@ -8,6 +8,7 @@ import pickle
 import numpy
 import sys
 from mass_stream import *
+from BUd import *
 import os
 
 
@@ -65,7 +66,7 @@ def parse(inputfile, time, tables):
      #Creating the Table
 	  writer2 = open('data_'+str(time)+'.txt','a')
 #             print >> 	ii, str(totWT)
-	  print >> writer2, '{0} {1}'.format(ii, totWT[ty])
+	  print >> writer2, '{0} {1}'.format(ii, totWT[ty]/(LWR_BUd+FR_BUd))
 	  writer2.close
 	  ty=ty+1
 	  #     Storage.calc(instream, time)
@@ -174,7 +175,7 @@ def heat(inputfile, time):
 	    #mp = (time-(t/2))*(expm1((log1p(totWT[ty] * totWT[ty-1]))/2))
 	    mt = (time-(t/2))*(sqrt(totWT[0] * Prev_tot))
 	    n = n + mt
-	    print >> writer2, '{0} {1}'.format(time,n)
+	    print >> writer2, '{0} {1}'.format(time,n/(LWR_BUd+FR_BUd))
 	    writer2.close
 	Prev_tot= totWT[0]
 	ty=ty+1
