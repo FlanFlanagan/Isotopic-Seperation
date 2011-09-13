@@ -127,7 +127,12 @@ LWR_SNF.name = "LWR_SNF"
 LWR_Cooled = LWR_Stor.calc(LWR_SNF, LWR_SNF_Storage_Time)
 LWR_Cooled.name = "LWR_Cooled"
 
-
+RmvIsos = [RmIsos]
+RmStor = MassStream({RmIsos: LWR_Cooled.comp[RmIsos]})
+stor_t = 6 * half_life(RmIsos)
+Rm_Stor = Rmv_Stor.calc(RmStor, stor_t)
+LWR_Cooled = remove(LWR_Cooled, RmvIsos)
+LWR_Cooled = LWR_Cooled + Rm_Stor
 
 LWR_stream = LWR_Cooled.mult_by_mass()
 with open('LWR_CooledIsos.txt', 'w') as f:
@@ -135,12 +140,7 @@ with open('LWR_CooledIsos.txt', 'w') as f:
 	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), LWR_stream[iso]))
 	
 	
-RmvIsos = [RmIsos]
-RmStor = MassStream({RmIsos: LWR_Cooled.comp[RmIsos]})
-stor_t = 6 * half_life(RmIsos)
-Rm_Stor = Rmv_Stor.calc(RmStor, stor_t)
-LWR_Cooled = remove(LWR_Cooled, RmvIsos)
-LWR_Cooled = LWR_Cooled + Rm_Stor
+
 
 LWR_RepOut = LWR_Rep.calc(LWR_Cooled)
 LWR_RepOut.name = "LWR_Reprocessing_Product"
@@ -472,8 +472,8 @@ with open('HLW_CooledIsos.txt', 'w') as f:
 	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), HLW_stream[iso]))
 	
 writer2 = open('BUd.py','a')
-n = LWR.BUd
+n = LWR.BUd*snf_need[-1]
 m = FR.BUd
 writer2.write('LWR_BUd =' + str(n)+'\n')
-writer2.write('FR_BUd =' + str(m))
+writer2.write('FR_BUd =' + str(m)+'\n')
 writer2.close
