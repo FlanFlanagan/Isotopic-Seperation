@@ -1,7 +1,7 @@
-from bright import lwr_defaults
+from bright.reactor_parameters import lwr_defaults
 LWR_Params = lwr_defaults()
 
-from bright import fr_defaults
+from bright.reactor_parameters import fr_defaults
 FR_Params = fr_defaults()
 
 #General Specifications
@@ -19,12 +19,12 @@ LWR_SNF_Storage_Time        =  6
                             
 #LWR Reprocessing                         
 LWR_SE_U      =              0.999 
-LWR_SE_NP     =              0.999 
-LWR_SE_PU     =              0.999 
-LWR_SE_AM     =              0.999 
-LWR_SE_CM     =              0.999 
-LWR_SE_CS     =              0.9999 
-LWR_SE_SR     =              0.9999 
+LWR_SE_NP     =              0.99 
+LWR_SE_PU     =              0.99 
+LWR_SE_AM     =              0.99 
+LWR_SE_CM     =              0.99 
+LWR_SE_CS     =              0.0 
+LWR_SE_SR     =              0.0
                             
 #FR Specifications                        
 #FR_Params.BUt = 176.0						#FR Burnup
@@ -40,12 +40,12 @@ FR_SNF_Storage_Time  = 3
                             
 #FR Reprocessing                          
 FR_SE_U       =              0.999 
-FR_SE_NP      =              0.999 
-FR_SE_PU      =              0.999 
-FR_SE_AM      =              0.9 
-FR_SE_CM      =              0.999 
-FR_SE_CS      =              0.9999 
-FR_SE_SR      =              0.9999 
+FR_SE_NP      =              0.99 
+FR_SE_PU      =              0.99 
+FR_SE_AM      =              0.99 
+FR_SE_CM      =              0.99 
+FR_SE_CS      =              0.0 
+FR_SE_SR      =              0.0 
 
 
 #Interim Storage
