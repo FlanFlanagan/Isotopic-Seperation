@@ -146,7 +146,6 @@ LWR_RepOut = LWR_Rep.calc(LWR_Cooled)
 LWR_RepOut.name = "LWR_Reprocessing_Product"
 
 RmStor = {}
-print (LWR_SNF)
 for isos1 in RmIsos:
     mass_con = LWR_Cooled.mass
     RmvIsos = [isos1]
@@ -160,7 +159,7 @@ RmStor2 = Rm_Stor
 LWR_stream = LWR_Cooled.mult_by_mass()
 with open('LWR_CooledIsos.txt', 'w') as f:
     for iso in LWR_stream.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), LWR_stream[iso]))
+	f.write("{0:10} {1:.5E}\n".format(pyne.nucname.name(iso), LWR_stream[iso]))
 
 #LWR_Rep.write_ms_pass()
 #LWR_Stor.write_ms_pass()
@@ -171,8 +170,8 @@ with open('LWR_CooledIsos.txt', 'w') as f:
 
 #Mass Streams
 UTopUp       = Material("U-TopUp.txt", 0.50, "UTopUp")
-TRUTopUp     = LWR_RepOut.get_tru("TRUTopUp")
-TRUTopUp     = LWR_RepOut.get_tru("TRUTopUp")
+TRUTopUp     = LWR_RepOut.sub_tru("TRUTopUp")
+TRUTopUp     = LWR_RepOut.sub_tru("TRUTopUp")
 FR_RepUout   = Material({922350: 1.0}, 0.0, "RepUout")
 FR_RepTRUout = Material({942380: 1.0}, 0.0, "RepTRUout")
 FR_RepLANout = Material({591440: 1.0}, 0.0, "RepLANout")
@@ -182,7 +181,7 @@ TRUTopUp.mass = 0.5
 
 def FR_delR_BU_(ms):
     "Calculates the delta Reaction Rates at the target burnup."
-    FR.ms_feed = ms
+    FR.mat_feed = ms
     FR.fold_mass_weights()
     dR = FR.batch_average(FR_Params.BUt, "p") - FR.batch_average(FR_Params.BUt, "D")
     return dR
@@ -253,9 +252,9 @@ def FR_Mass_Ratio_Calc():
 	    print()
 
     #Calculate and write output
+    #CoreInput = CoreInput + RmStor2
     FR.BUd_bisection_method()
-    FR.calc_ms_prod()
-    FR.calcSubStreams()
+    FR.calc()
     FR.calc_tru_cr()
 
     return
@@ -354,7 +353,6 @@ def FR_Calibrate_PNL_2_TRUCR():
 
 for cyc in range(10):
     FR_Calibrate_PNL_2_TRUCR()
-    CoreInput=CoreInput + RmSotr2
     delta = 0.001
     BadKRange = True
     while BadKRange:
@@ -371,27 +369,28 @@ for cyc in range(10):
 		FR.P_NL = FR.P_NL + delta
 	    elif 1.0  <= pnl_regime:
 		FR.P_NL = FR.P_NL - delta
+#    CoreInput2 = CoreInput
     FR.write()
     
 
-    Fuel_stuff = CoreInput2.mult_by_mass()
-    with open('fuel'+str(cyc)+'.txt', 'w') as f:
-	for iso in Fuel_stuff.keys():
-	  f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), Fuel_stuff[iso]))
+#    Fuel_stuff = CoreInput.mult_by_mass()
+#    with open('fuel'+str(cyc)+'.txt', 'w') as f:
+#	for iso in Fuel_stuff.keys():
+#	  f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), Fuel_stuff[iso]))
 
 
 
     #Calculate the LWR SNF Top up needed
     snf_need.append( TRUTopUp.mass / TRU_per_kgLWR_FF )
-    StorOut = FR_Stor.calc(FR.ms_prod, FR_SNF_Storage_Time)
+    StorOut = FR_Stor.calc(FR.mat_prod, FR_SNF_Storage_Time)
     StorOut.name = "StorOut"
-    StorOutBurn = FR.ms_prod 
+    StorOutBurn = FR.mat_prod 
     RmStor2.mass = RmStor2.mass*snf_need[-1]
     
     FR_streamBurn = StorOutBurn.mult_by_mass()
     with open('FR_Burn'+str(cyc)+'.txt', 'w') as f:
 	for iso in FR_streamBurn.keys():
-	    f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), FR_streamBurn[iso]))
+	    f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), FR_streamBurn[iso]))
     
 
 
@@ -399,11 +398,12 @@ for cyc in range(10):
     FR_RepOut.name = "RepOut"
     FR_Rep.write()
 
-    FR_RepUout   = FR_RepOut.get_u(FR_RepUout.name)
-    FR_RepTRUout = FR_RepOut.get_tru(FR_RepTRUout.name) + FR_RepOut.get_sub_stream(['PD107'])
+    FR_RepUout   = FR_RepOut.sub_u(FR_RepUout.name)
+    FR_RepTRUout = FR_RepOut.sub_tru(FR_RepTRUout.name)# + FR_RepOut.sub_mat(['PD107'])
+    FR.fold_mass_weights()
     print(StorOut.comp[942390]*StorOut.mass)
     print(StorOut.comp[922380]*StorOut.mass)
-    FR_RepLANout = FR_RepOut.get_lan(FR_RepLANout.name)
+    FR_RepLANout = FR_RepOut.sub_lan(FR_RepLANout.name)
     if FR_LAN_FF_Cap < FR_RepLANout.mass:
 	FR_RepLANout.mass = FR_LAN_FF_Cap
     print(FR.tru_cr)
@@ -427,7 +427,7 @@ FR_Stor.write()
 Fuel_stuff = CoreInput.mult_by_mass()
 with open('fuel.txt', 'w') as f:
     for iso in Fuel_stuff.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), Fuel_stuff[iso]))	
+	f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), Fuel_stuff[iso]))	
 	
 
 #Write the SNF Needed line to output file
@@ -442,13 +442,13 @@ params.close()
 FR_streamBurn = StorOutBurn.mult_by_mass()
 with open('FR_Burn.txt', 'w') as f:
     for iso in FR_streamBurn.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), FR_streamBurn[iso]))
+	f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), FR_streamBurn[iso]))
 
 
 FR_stream = StorOut.mult_by_mass()
 with open('FR_CooledIsos.txt', 'w') as f:
     for iso in FR_stream.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), FR_stream[iso]))
+	f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), FR_stream[iso]))
 
 
 #################################
@@ -467,15 +467,15 @@ for i in FP:
 	other_FP.append(i)
 
 #Fist get LWR HLW
-LWR_SNF_U   = LWR_Stor.ms_prod.get_u()
-LWR_SNF_NP  = LWR_Stor.ms_prod.get_sub_stream(["NP"])
-LWR_SNF_PU  = LWR_Stor.ms_prod.get_pu()
-LWR_SNF_AM  = LWR_Stor.ms_prod.get_sub_stream(["AM"])
-LWR_SNF_CM  = LWR_Stor.ms_prod.get_sub_stream(["CM"])
-LWR_SNF_CS  = LWR_Stor.ms_prod.get_sub_stream(["CS"])
-LWR_SNF_SR  = LWR_Stor.ms_prod.get_sub_stream(["SR"])
-LWR_SNF_LAN = LWR_Stor.ms_prod.get_lan()
-LWR_SNF_oFP = LWR_Stor.ms_prod.get_sub_stream(other_FP)
+LWR_SNF_U   = LWR_Stor.mat_prod.sub_u()
+LWR_SNF_NP  = LWR_Stor.mat_prod.sub_mat(["NP"])
+LWR_SNF_PU  = LWR_Stor.mat_prod.sub_pu()
+LWR_SNF_AM  = LWR_Stor.mat_prod.sub_mat(["AM"])
+LWR_SNF_CM  = LWR_Stor.mat_prod.sub_mat(["CM"])
+LWR_SNF_CS  = LWR_Stor.mat_prod.sub_mat(["CS"])
+LWR_SNF_SR  = LWR_Stor.mat_prod.sub_mat(["SR"])
+LWR_SNF_LAN = LWR_Stor.mat_prod.sub_lan()
+LWR_SNF_oFP = LWR_Stor.mat_prod.sub_mat(other_FP)
 
 LWR_SNF_oFP = LWR_SNF_oFP + Material({10010: 1.0 - LWR_SNF_U.mass - \
     LWR_SNF_NP.mass - LWR_SNF_PU.mass - LWR_SNF_AM.mass - LWR_SNF_CM.mass - \
@@ -495,15 +495,15 @@ LWR_HLW = LWR_HLW * snf_need[-1]
 
 
 #Then get FR HLW
-FR_SNF_U   = FR_Stor.ms_prod.get_u()
-FR_SNF_NP  = FR_Stor.ms_prod.get_sub_stream(["NP"])
-FR_SNF_PU  = FR_Stor.ms_prod.get_pu()
-FR_SNF_AM  = FR_Stor.ms_prod.get_sub_stream(["AM"])
-FR_SNF_CM  = FR_Stor.ms_prod.get_sub_stream(["CM"])
-FR_SNF_CS  = FR_Stor.ms_prod.get_sub_stream(["CS"])
-FR_SNF_SR  = FR_Stor.ms_prod.get_sub_stream(["SR"])
-FR_SNF_LAN = FR_Stor.ms_prod.get_lan()
-FR_SNF_oFP = FR_Stor.ms_prod.get_sub_stream(other_FP)
+FR_SNF_U   = FR_Stor.mat_prod.sub_u()
+FR_SNF_NP  = FR_Stor.mat_prod.sub_mat(["NP"])
+FR_SNF_PU  = FR_Stor.mat_prod.sub_pu()
+FR_SNF_AM  = FR_Stor.mat_prod.sub_mat(["AM"])
+FR_SNF_CM  = FR_Stor.mat_prod.sub_mat(["CM"])
+FR_SNF_CS  = FR_Stor.mat_prod.sub_mat(["CS"])
+FR_SNF_SR  = FR_Stor.mat_prod.sub_mat(["SR"])
+FR_SNF_LAN = FR_Stor.mat_prod.sub_lan()
+FR_SNF_oFP = FR_Stor.mat_prod.sub_mat(other_FP)
 
 FR_SNF_oFP = FR_SNF_oFP + Material({10010: 1.0 - FR_SNF_U.mass - \
     FR_SNF_NP.mass - FR_SNF_PU.mass - FR_SNF_AM.mass - FR_SNF_CM.mass - \
@@ -533,7 +533,7 @@ INT_Stor.write()
 HLW_stream = HLW_Cooled.mult_by_mass()
 with open('HLW_CooledIsos.txt', 'w') as f:
     for iso in HLW_stream.keys():
-	f.write("{0:10}{1:.5E}\n".format(isoname.zzaaam_2_LLAAAM(iso), HLW_stream[iso]))
+	f.write("{0:10}{1:.5E}\n".format(pyne.nucname.name(iso), HLW_stream[iso]))
        
 writer2 = open('BUd.py','w')
 n = LWR.BUd*snf_need[-1]
