@@ -1,10 +1,11 @@
 #! /usr/bin/env python
 from __future__ import print_function
+import faulthandler
+faulthandler.enable()
 
 import time
 import math
 import tables
-from AddFuncts import *
 from fcparams import *
 from bright import *
 from pyne.data import *
@@ -12,12 +13,17 @@ from pyne.material import Material
 from pyne.utils import *
 from bright.api import *
 from bright.storage import *
+from AddFuncts import *
 ##################
 ### Prep Work! ###
 ##################
 
-bright_config.write_hdf5 = True
-bright_config.write_text = False
+
+bright_conf.write_hdf5 = False
+bright_conf.write_text = True
+
+#bright_config.write_hdf5 = True
+#bright_config.write_text = False
 
 RmIsos = [#400930
 	  430990
@@ -29,7 +35,7 @@ RmIsos = [#400930
 #Various Variables
 snf_need = []
 if not Quiet:
-    verbosity(100)
+    bright_conf.verbosity = 100
 
 #General Functions
 def MakeSep(s):
@@ -47,7 +53,7 @@ def MakeSep(s):
 trackfile = tables.openFile("FR.h5", 'r')
 itrack = trackfile.root.ToIso_zz.read()
 trackfile.close()
-bright_config.track_isos = set([int(i) for i in itrack])
+bright_conf.track_nucs = set([int(i) for i in itrack])
 
 #Converts storage times to seconds
 for key in vars().keys():
@@ -64,6 +70,7 @@ sepeffLWR = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 sepeffFR  = {"92": 0.9, "93": 0.9, "94": 1, "95": 0, "96": 0, "55": 0, "38": 0}
 
 
+
 #Fuel Cycle Components
 LWR      = LightWaterReactor1G(libfile="LWR.h5",reactor_parameters=lwr_defaults(),name= "LWR")
 FR       = FastReactor1G(libfile= "FR.h5", reactor_parameters=FR_Params, name= "FR")
@@ -73,6 +80,7 @@ LWR_Stor = Storage("LWR_Storage")
 FR_Stor  = Storage("FR_Storage")
 INT_Stor = Storage("INT_Storage")
 Rmv_Stor = Storage("Rmv_Storage")
+
 	
 #######################
 ### LWR Computation ###
